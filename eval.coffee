@@ -265,7 +265,7 @@ extend this,
 
   # ad-hoc
   isSymbol: (exp) ->
-    /^[a-z-A-Z0-9_$?!+*/=]+$/.test exp
+    /^([a-z-A-Z0-9_$?!+*/=><\-]|>=|<=)+$/.test exp
 
   # Quotations have the form (quote <text-of-quotation>)
 
@@ -804,21 +804,25 @@ extend this,
     cadr proc
 
   primitiveProcedures: list(
-    list('car',   car),
-    list('cdr',   cdr),
-    list('cons',  cons),
-    list('list',  list),
-    list('true?', isTrue),
+    list('car',    car),
+    list('cdr',    cdr),
+    list('cons',   cons),
+    list('list',   list),
+    list('true?',  isTrue),
     list('false?', isFalse),
-    list('pair?', isPair),
+    list('pair?',  isPair),
     list('length', (items) -> items.length),
-    list('null?', (x) -> x is null),
-    list('=',     (x, y) -> x == y),
-    list('eq',    (x, y) -> x == y),
-    list('+', (args...) -> args.reduce (a, b) -> a + b),
-    list('-', (args...) -> args.reduce (a, b) -> a - b),
-    list('*', (args...) -> args.reduce (a, b) -> a * b),
-    list('/', (args...) -> args.reduce (a, b) -> a / b)
+    list('null?',  (x) -> x is null),
+    list('=',      eq),
+    list('eq',     eq),
+    list('>',      (x, y) -> x > y),
+    list('>=',     (x, y) -> x >= y),
+    list('<',      (x, y) -> x < y),
+    list('<=',     (x, y) -> x <= y),
+    list('+',      (args...) -> args.reduce (a, b) -> a + b),
+    list('-',      (args...) -> args.reduce (a, b) -> a - b),
+    list('*',      (args...) -> args.reduce (a, b) -> a * b),
+    list('/',      (args...) -> args.reduce (a, b) -> a / b)
   )
 
 this.primitiveProcedureNames = map car, primitiveProcedures

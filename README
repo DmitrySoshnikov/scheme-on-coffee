@@ -21,6 +21,16 @@ Examples (see http://dmitrysoshnikov.com/coffee-lisp-eval/):
 
     Input:
 
+        (define x 10)
+
+    Output:
+
+        10 ; now x can be referred as bound variable
+
+3. Define a procedure:
+
+    Input:
+
         (define (sum x y)
                 (+ x y))
 
