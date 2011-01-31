@@ -1,0 +1,100 @@
+<html>
+    <head>
+        <title>Coffee-Lisp-Eval</title>
+        <script src="coffee-script.js" type="text/javascript"></script>
+        <script src="parse.coffee" type="text/coffeescript"></script>
+        <script src="eval.coffee" type="text/coffeescript"></script>
+        <script src="index.js" type="text/javascript"></script>
+        <style type="text/css" media="screen">
+          body {
+            font-family: Calibri;
+          }
+          .env-table {
+            font-size: 8pt;
+          }
+          #result {
+            overflow: auto;
+            width: 99%;
+            height: 700px;
+            background-color: #D8D6C2;
+            border: 1px dashed #555;
+            padding: 5px;
+            font-family: Verdana;
+            font-size: 8pt;
+            margin-top: 3px;
+          }
+          ul li {
+            font-size: 9pt;
+            cursor: default;
+          }
+          pre {
+            background-color: #EEE;
+            cursor: pointer;
+            padding: 3px;
+          }
+          #source {
+            width: 100%;
+            height: 130px;
+            margin-top: 3px;
+          }
+          label {
+            font-size: 9pt;
+          }
+          code {
+            background-color: #EEE;
+            font-family: Calibri;
+          }
+        </style>
+    </head>
+    <body>
+        <strong>CoffeeScript's port of the Scheme's <a href="http://mitpress.mit.edu/sicp/full-text/book/book-Z-H-26.html#%_sec_4.1">Metacircular Evaluator</a> &ndash; chapter 4.1 of the <a href="http://mitpress.mit.edu/sicp/full-text/book/book.html">SICP</a>.</strong><br /><br />
+        <strong>Version:</strong> 0.1. <strong>History:</strong> <code>Ctrl + &uarr;</code> / <code>Ctrl + &darr;</code>. <strong>Eval:</strong> <code>Ctrl + Enter</code> or the button "eval" below. Source: <a href="parse.coffee">parser</a>, <a href="eval.coffee">evaluator</a>. ECMAScript info: <a href="http://dmitrysoshnikov.com">http://dmitrysoshnikov.com</a><br /><br />
+        <table width="100%" style="height: 600px;">
+            <tr>
+                <td valign="top" width="50%">
+                  Expression input:
+                  <textarea id="source" onkeypress="onSourceKeyPressed(event);">(+ 1 2 3)</textarea>
+                  <input type="button" id="evalButton" value="eval" onclick="onEvalButtonClick(event);" />
+                    <input type="button" value="parse" onclick="onParseButtonClick(event);" />
+                    <input type="button" value="clear" onclick="document.getElementById('result').innerHTML = '';" />
+                    <input type="button" value="global env" onclick="onGlobalEnvButtonClick(event);" />
+                    <input type="checkbox" id="clear-checkbox" /><label for="clear-checkbox" >clear expression input on eval</label>
+                  <br /><br /><span style="font-size: 9pt;">Examples (click to eval):<br /><br />
+                  1. Sum:<br />
+<pre>(+ 1 2 3)</pre>
+                  2. Define a variable in the Global environment:<br />
+<pre>(define x 10)</pre>
+                  3. Define a procedure:<br />
+<pre>
+(define (sum x y)
+        (+ x y))
+</pre>
+                  4. Eval the sequence (block) of expression:<br />
+<pre>
+(begin (define a 10)       ; define "a" variable
+       (define b 30)       ; and "b" variable
+       (define (square x)
+               (* x x))    ; and a function
+       (+ (square a) b))   ; and get the sum of square of "a" and "b"
+</pre>
+                  5. Recursion; define the factorial function an call it:<br />
+<pre>
+(begin
+  (define (factorial n)               ; define the factorial function
+    (if (= n 1)
+        1
+        (* n (factorial (- n 1)))))
+  (factorial 5))                      ; and call it for value 5
+</pre>
+                  6. Map the list with a lambda expression:<br />
+<pre>
+(map (lambda (x) (* x x)) ; anonymous function
+     (list 1 2 3 4))      ; maps the list to '(1 4 9 16)
+</pre>
+<span>
+                </td>
+                <td valign="top" id="result-td">Output:<div id="result"></div></td>
+            </tr>
+        </table>
+    </body>
+</html>

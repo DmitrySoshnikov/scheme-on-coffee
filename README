@@ -1,0 +1,69 @@
+# Lisp/Scheme evaluator, see: SICP, 4.1
+#
+# Port to CoffeeScript
+# by Dmitry Soshnikov <dmitry.soshnikov@gmail.com>
+# (C) MIT Style License
+#
+
+Examples (see http://dmitrysoshnikov.com/coffee-lisp-eval/):
+
+1. Sum:
+
+    Input:
+
+        (+ 1 2 3)
+
+    Output:
+
+        6
+
+2. Define a variable in the Global environment:
+
+    Input:
+
+        (define (sum x y)
+                (+ x y))
+
+    Output:
+
+        ok ; procedure object created
+
+4. Eval the sequence (block) of expression:
+
+    Input:
+
+        (begin (define a 10)       ; define "a" variable
+               (define b 30)       ; and "b" variable
+               (define (square x)
+                       (* x x))    ; and a function
+               (+ (square a) b))   ; and get the sum of square of "a" and "b"
+
+    Output:
+
+        130
+
+5. Recursion; define the factorial function an call it:
+
+    Input:
+
+        (begin
+          (define (factorial n)               ; define the factorial function
+              (if (= n 1)
+                1
+                (* n (factorial (- n 1)))))
+          (factorial 5))                      ; and call it for value 5
+
+    Output:
+
+        120
+
+6. Map the list with a lambda expression:
+
+    Input:
+
+        (map (lambda (x) (* x x)) ; anonymous function
+              (list 1 2 3 4))      ; maps the list to '(1 4 9 16)
+
+    Output:
+
+        (1 4 9 16)
