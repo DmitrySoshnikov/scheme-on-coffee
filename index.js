@@ -41,15 +41,14 @@ function onParseButtonClick(event) {
 function onGlobalEnvButtonClick(event) {
   var keys = LispList2JSArray(car(car(G)));
   var values = LispList2JSArray(cdr(car(G)));
-  var keysData = '';
-  var valuesData = '';
-  var value;
+  var value = '';
+  var res = '';
   for (var k = 0; k < keys.length; k++) {
-    keysData += ' &nbsp; &nbsp;<b>' + keys[k] + '</b><br />';
+    res += '    <b>' + strPad(8, keys[k]) + '</b> :   ';
     value = values[k];
-    valuesData += ': ' + (value && value.constructor == Array && (value[0] == 'primitive' || value[0] == 'procedure') ? 'function' : value) + (k == keys.length - 1 ? '' : ',') + '<br />';
+    res += (value && value.constructor == Array && (value[0] == 'primitive' || value[0] == 'procedure') ? 'function' : value) + (k == keys.length - 1 ? '' : ',') + '\n';
   }
-  var globalEnvRes = 'Global environment:<br /><br />{<table class="env-table" valign=\'top\'><tr><td>' + keysData + '</td><td>' + valuesData + '</td></tr><table><span>}</span><br/><br/>';
+  var globalEnvRes = '<b>Global environment:</b><br /><pre>{\n' + res + '}</pre><br/>';
   document.getElementById('result').innerHTML += globalEnvRes;
 }
 
@@ -58,8 +57,18 @@ function showExample(event) {
   onEvalButtonClick();
 }
 
+function strPad(n, str, from, ch) {
+  ch || (ch = " ");
+  var len = str.length;
+  var res = "";
+  while (len++ < n) {
+    res += ch;
+  }
+  return (from == "left" ? res + str : str + res);
+}
+
 window.onload = function () {
-  //window.setTimeout(onGlobalEnvButtonClick, 1);
+  // window.setTimeout(onGlobalEnvButtonClick, 3000);
   var examples = document.getElementsByTagName('pre');
   for (var k = examples.length; k--;) {
     examples[k].onclick = showExample;
