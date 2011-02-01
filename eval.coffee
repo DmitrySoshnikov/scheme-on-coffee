@@ -108,8 +108,18 @@ this.LispMachine =
     # console.log "isCond #{exp}", isCond exp
     if isCond exp
       return LispMachine.eval(
-        condIf(exp),
+        condToIf(exp),
         env
+      )
+
+    # console.log "isLet #{exp}", isLet exp
+    if isLet exp
+      return LispMachine.apply(
+        LispMachine.eval(
+          letToLambda(exp),
+          env
+        ),
+        letValues(exp)
       )
 
     ## --------------------------
@@ -461,7 +471,7 @@ extend this,
   restExps: (seq) ->
     cdr seq
 
-  # We also include a constructor sequenceExp (for use by condIf) that transforms a sequence into
+  # We also include a constructor sequenceExp (for use by condToIf) that transforms a sequence into
   # a single expression, using begin if necessary:
 
   sequenceExp: (seq) ->
@@ -536,7 +546,7 @@ extend this,
   condActions: (clause) ->
     cdr clause
 
-  condIf: (exp) ->
+  condToIf: (exp) ->
     expandClauses condClauses(exp)
 
   expandClauses: (clauses) ->
@@ -550,6 +560,41 @@ extend this,
       condPredicate(first),
       sequenceExp(condActions(first)),
       expandClauses(rest)
+    )
+
+  # DS: `let` is also a derived expression and just a syntactic sugar for lambda
+  # we could handle this in parser, but for now process in runtime
+  #
+  # Expression:
+  #
+  # (let ((x 5)
+  #       (y 6))
+  #      (* x y))
+  #
+  # Transforms into (create lambda and immidiately execute it):
+  #
+  # ((lambda (x y) (* x y)) 5 6)
+  #
+
+  isLet: (exp) ->
+    isTaggedList exp, 'let'
+
+  letBindings: (exp) ->
+    cadr exp
+
+  letVars: (exp) ->
+    map car, letBindings(exp)
+
+  letValues: (exp) ->
+    map cadr, letBindings(exp)
+
+  letBody: (exp) ->
+    cddr(exp)
+
+  letToLambda: (exp) ->
+    makeLambda(
+      letVars(exp),
+      letBody(exp)
     )
 
 ## ---------------------------------
