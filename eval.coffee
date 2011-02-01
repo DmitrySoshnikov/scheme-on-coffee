@@ -804,25 +804,48 @@ extend this,
     cadr proc
 
   primitiveProcedures: list(
-    list('car',    car),
-    list('cdr',    cdr),
-    list('cons',   cons),
-    list('list',   list),
+
+    # lists
+    list('car',      car),
+    list('cdr',      cdr),
+    list('cons',     cons),
+    list('list',     list),
+    list('list-ref', (l, i) -> l[i]),
+    list('length',   (items) -> items.length),
+    list('append',   (x, y) -> JSArray2LispList(x.concat(y))),
+    list('reverse',  (x) -> JSArray2LispList(x.reverse())),
+
+    # predicates
     list('true?',  isTrue),
     list('false?', isFalse),
     list('pair?',  isPair),
-    list('length', (items) -> items.length),
     list('null?',  (x) -> x is null),
+
+    # relational
     list('=',      eq),
     list('eq',     eq),
     list('>',      (x, y) -> x > y),
     list('>=',     (x, y) -> x >= y),
     list('<',      (x, y) -> x < y),
     list('<=',     (x, y) -> x <= y),
+
+    # some math
     list('+',      (args...) -> args.reduce (a, b) -> a + b),
-    list('-',      (args...) -> args.reduce (a, b) -> a - b),
     list('*',      (args...) -> args.reduce (a, b) -> a * b),
-    list('/',      (args...) -> args.reduce (a, b) -> a / b)
+
+    list('min',    (args...) -> Math.min.apply Math, args),
+    list('max',    (args...) -> Math.max.apply Math, args),
+    list('abs',    (x) -> if x > 0 then x else -x),
+
+    list('-', (args...) ->
+      return -args[0] if args.length is 1
+      args.reduce (a, b) -> a - b
+    ),
+
+    list('/', (args...) ->
+      return 1/args[0] if args.length is 1
+      args.reduce (a, b) -> a / b
+    )
   )
 
 this.primitiveProcedureNames = map car, primitiveProcedures
@@ -867,7 +890,7 @@ extend this,
     output = LispMachine.eval(parse(input), env or TheGlobalEnvironment)
     if isPair(output)
       return if isPair(cdr(output)) then "(#{LispList2JSArray(output).join(' ')})" else "(#{output.join(' . ')})"
-    return "&lt;procedure \"#{input}\"&gt;" if output and car(output) is "procedure" and isVariable(input)
+    return "&lt;#procedure \"#{input}\"&gt;" if output and car(output) is "procedure" and isVariable(input)
     output
 
   promptForInput: (string) ->
