@@ -119,7 +119,7 @@ this.LispMachine =
           letToLambda(exp),
           env
         ),
-        letValues(exp)
+        letValues(exp, env)
       )
 
     ## --------------------------
@@ -585,8 +585,11 @@ extend this,
   letVars: (exp) ->
     map car, letBindings(exp)
 
-  letValues: (exp) ->
-    map cadr, letBindings(exp)
+  letValues: (exp, env) ->
+    map(
+      (binding) -> LispMachine.eval(cadr(binding), env),
+      letBindings(exp)
+    )
 
   letBody: (exp) ->
     cddr(exp)
