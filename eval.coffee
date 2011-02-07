@@ -935,10 +935,20 @@ extend this,
 
   execute: (input, env) ->
     return 'no input' if not input
-    output = LispMachine.eval(parse(input), env or TheGlobalEnvironment)
+
+    expressions = parse(input)
+    output = null
+    env ?= TheGlobalEnvironment
+
+    expressions.forEach (exp) ->
+      output = LispMachine.eval exp, env
+
+    if output and car(output) is "procedure" and isVariable(input)
+      return "&lt;#procedure \"#{input}\"&gt;"
+
     if isPair(output)
       return if isPair(cdr(output)) then "(#{LispList2JSArray(output).join(' ')})" else "(#{output.join(' . ')})"
-    return "&lt;#procedure \"#{input}\"&gt;" if output and car(output) is "procedure" and isVariable(input)
+
     output
 
   promptForInput: (string) ->

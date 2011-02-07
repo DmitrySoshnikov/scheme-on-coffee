@@ -35,7 +35,10 @@ function onParseButtonClick(event) {
   var source = document.getElementById('source').value;
   if (!source.replace(/^\s+|\s+$/g, '')) return;
   var parsed = parse(document.getElementById('source').value);
-  var parsedValue = 'Scheme expression in Coffee: ' + JSON.stringify(parsed).replace(/,(?=[^ ])/g, ', ') + '<br /></br />';
+  var expressions = parsed.map(function (exp, index) {
+    return "    " + index + ": " + JSON.stringify(exp).replace(/,(?=[^ ])/g, ', ')
+  });
+  var parsedValue = '<b>Scheme expressions (' + expressions.length + ') in Coffee</b>:<br /><pre>[\n' + expressions.join("\n") + '\n]</pre></br />';
   document.getElementById('result').innerHTML += parsedValue;
 }
 function onGlobalEnvButtonClick(event) {
