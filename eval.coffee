@@ -14,7 +14,7 @@
 # text of the chapter 4.1 of the SICP book
 #
 
-this.LispMachine =
+@LispMachine =
 
   ## --------------------------
   ## Eval
@@ -179,7 +179,7 @@ extend = (object, module) ->
     object[k] = module[k]
   object
 
-extend this,
+extend @,
 
   ## --------------------------
   ## Procedure arguments
@@ -252,7 +252,7 @@ extend this,
 ## 4.1.2  Representing Expressions
 ## ---------------------------------
 
-extend this,
+extend @,
 
   # The only self-evaluating items are numbers and strings:
 
@@ -569,7 +569,7 @@ extend this,
   #
   # (let ((x 5)
   #       (y 6))
-  #      (* x y))
+  #       (* x y))
   #
   # Transforms into (create lambda and immidiately execute it):
   #
@@ -608,7 +608,7 @@ extend this,
 # structures that the evaluator manipulates internally, as part of the execution of a program, such as the representation
 # of procedures and environments and the representation of true and false.
 
-extend this,
+extend @,
 
   ## ---------------------------------
   ## Testing of predicates
@@ -806,7 +806,7 @@ extend this,
 # primitive procedures that can appear in the expressions we will be evaluating. The global environment also includes bindings for the
 # symbols true and false, so that they can be used as variables in expressions to be evaluated.
 
-extend this,
+extend @,
 
   setupEnvironment: ->
 
@@ -839,11 +839,11 @@ extend this,
 
 
 # ad-hoc mapping on Coffee level
-this.map = (proc, items) ->
+@map = (proc, items) ->
   return null if items is null
   cons(proc(car(items)), map(proc, cdr(items)))
 
-extend this,
+extend @,
 
   isPrimitiveProcedure: (proc) ->
     isTaggedList proc, 'primitive'
@@ -896,11 +896,11 @@ extend this,
     )
   )
 
-this.primitiveProcedureNames = map car, primitiveProcedures
+@primitiveProcedureNames = map car, primitiveProcedures
 
-this.primitiveProcedureObjects = map ((proc) -> list 'primitive', cadr(proc)), primitiveProcedures
+@primitiveProcedureObjects = map ((proc) -> list 'primitive', cadr(proc)), primitiveProcedures
 
-extend this,
+extend @,
 
   # To apply a primitive procedure, we simply apply the implementation procedure to the arguments, using the
   # underlying Lisp system:
@@ -943,8 +943,8 @@ extend this,
     expressions.forEach (exp) ->
       output = LispMachine.eval exp, env
 
-    if output and car(output) is "procedure" and isVariable(input)
-      return "&lt;#procedure \"#{input}\"&gt;"
+    if output and car(output) is "procedure"
+      return if isVariable(input) then "&lt;#procedure \"#{input}\"&gt;" else "&lt;#anonymous procedure&gt;"
 
     if isPair(output)
       return if isPair(cdr(output)) then "(#{LispList2JSArray(output).join(' ')})" else "(#{output.join(' . ')})"
@@ -965,14 +965,195 @@ extend this,
       return console.log list('compound-procedure', procedureParameters(object), procedureBody(object), '<procedure-env>')
     console.log object
 
+## -----------------------------------------------------
+## 4.1.7  Separating Syntactic Analysis from Execution
+## -----------------------------------------------------
+
+# The evaluator implemented above is simple, but it is very inefficient, because the syntactic analysis
+# of expressions is interleaved with their execution. Thus if a program is executed many times, its syntax
+# is analyzed many times. Consider, for example, evaluating (factorial 4) using the following definition of factorial:
+#
+# (define (factorial n)
+#   (if (= n 1)
+#       1
+#       (* (factorial (- n 1)) n)))
+#
+# Each time factorial is called, the evaluator must determine that the body is an if expression and
+# extract the predicate. Only then can it evaluate the predicate and dispatch on its value. Each time
+# it evaluates the expression (* (factorial (- n 1)) n), or the subexpressions (factorial (- n 1)) and (- n 1),
+# the evaluator must perform the case analysis in eval to determine that the expression is an application,
+# and must extract its operator and operands. This analysis is expensive. Performing it repeatedly is wasteful.
+#
+# We can transform the evaluator to be significantly more efficient by arranging things so that syntactic
+# analysis is performed only once.28 We split `eval`, which takes an expression and an environment, into two parts.
+# The procedure `analyze` takes only the `expression`. It performs the syntactic analysis and returns a new procedure,
+# the execution procedure, that encapsulates the work to be done in executing the analyzed expression. The execution
+# procedure takes an environment as its argument and completes the evaluation. This saves work because analyze will be
+# called only once on an expression, while the execution procedure may be called many times.
+#
+# With the separation into analysis and execution, eval now becomes
+
+# DS: Save old (unoptimized `eval`)
+@LispMachine.interpretationalEval = @LispMachine.eval
+
+@LispMachine.eval = (exp, env) ->
+  # parse all needed data
+  executionProcedure = analyze(exp)
+  #console.log "executionProcedure #{executionProcedure}"
+
+  # and complete the execution
+  executionProcedure env
+
+extend @,
+
+  # The result of calling analyze is the execution procedure to be applied to the environment. The analyze procedure
+  # is the same case analysis as performed by the original eval of section 4.1.1, except that the procedures to which we
+  # dispatch perform only analysis, not full evaluation:
+
+  analyze: (exp) ->
+
+    return analyzeSelfEvaluating exp          if isSelfEvaluating exp
+    return analyzeQuoted exp                  if isQuoted exp
+    return analyzeVariable exp                if isVariable exp
+    return analyzeAssignment exp              if isAssignment exp
+    return analyzeDefinition exp              if isDefinition exp
+    return analyzeIf exp                      if isIf exp
+    return analyzeLambda exp                  if isLambda exp
+
+    if isLet exp
+      return analyzeLet(analyzeLambda(letToLambda(exp)), exp)
+
+    return analyzeSequence(beginActions(exp)) if isBegin exp
+    return analyze(condToIf(exp))             if isCond exp
+    return analyzeApplication exp             if isApplication exp
+
+    throw "Unknown expression type -- ANALYZE #{exp}"
+
+  # Here is the simplest syntactic analysis procedure, which handles self-evaluating expressions. It returns an execution
+  # procedure that ignores its environment argument and just returns the expression:
+
+  analyzeSelfEvaluating: (exp) ->
+    (env) -> exp
+
+  # For a quoted expression, we can gain a little efficiency by extracting the text of the quotation only once, in the
+  # analysis phase, rather than in the execution phase.
+
+  analyzeQuoted: (exp) ->
+    quotedValue = textOfQuotation exp
+    (env) -> quotedValue
+
+  # Looking up a variable value must still be done in the execution phase, since this depends upon knowing the environment.
+
+  analyzeVariable: (exp) ->
+    (env) -> lookupVariableValue exp, env
+
+  # `analyzeAssignment` also must defer actually setting the variable until the execution, when the environment has been supplied.
+  # However, the fact that the `assignmentValue` expression can be analyzed (recursively) during analysis is a major gain in
+  # efficiency, because the assignment-value expression will now be analyzed only once. The same holds true for definitions.
+
+  analyzeAssignment: (exp) ->
+    variable = assignmentVariable exp
+    valueProc = analyze(assignmentValue(exp))
+    (env) ->
+      setVariableValue(
+        variable,
+        valueProc(env),
+        env
+      )
+      "ok"
+
+  analyzeDefinition: (exp) ->
+    variable = definitionVariable exp
+    valueProc = analyze(definitionValue(exp))
+    (env) ->
+      defineVariable(
+        variable,
+        valueProc(env),
+        env
+      )
+      "ok"
+
+  # For if expressions, we extract and analyze the predicate, consequent, and alternative at analysis time.
+
+  analyzeIf: (exp) ->
+    predicateProc = analyze(ifPredicate(exp))
+    consequentProc = analyze(ifConsequent(exp))
+    alternativeProc = analyze(ifAlternative(exp))
+    (env) ->
+      return consequentProc env if predicateProc(env) is true
+      alternativeProc env
+
+  # Analyzing a lambda expression also achieves a major gain in efficiency: We analyze the lambda body only once,
+  # even though procedures resulting from evaluation of the lambda may be applied many times.
+
+  analyzeLambda: (exp) ->
+    vars = lambdaParameters exp
+    bodyProc = analyzeSequence(lambdaBody(exp))
+    (env) -> makeProcedure(vars, bodyProc, env)
+
+  # Analysis of a sequence of expressions (as in a begin or the body of a lambda expression) is more involved.
+  # Each expression in the sequence is analyzed, yielding an execution procedure. These execution procedures
+  # are combined to produce an execution procedure that takes an environment as argument and sequentially calls
+  # each individual execution procedure with the environment as argument.
+
+  analyzeSequence: (exps) ->
+
+    sequentially = (proc1, proc2) ->
+      (env) ->
+        proc1 env
+        proc2 env
+
+    sequenceLoop = (firstProc, restProcs) ->
+      return firstProc if restProcs is null
+      sequenceLoop(sequentially(firstProc, car(restProcs)), cdr(restProcs))
+
+    procs = map(analyze, exps)
+    throw "Empty sequence -- ANALYZE" if procs is null
+    sequenceLoop(car(procs), cdr(procs))
+
+  # To analyze an application, we analyze the operator and operands and construct an execution procedure that
+  # calls the operator execution procedure (to obtain the actual procedure to be applied) and the operand execution
+  # procedures (to obtain the actual arguments). We then pass these to execute-application, which is the analog of
+  # apply in section 4.1.1. Execute-application differs from apply in that the procedure body for a compound procedure
+  # has already been analyzed, so there is no need to do further analysis. Instead, we just call the execution procedure
+  # for the body on the extended environment.
+
+  analyzeApplication: (exp) ->
+    getOperatorProc = analyze(operator(exp))
+    operandProcs = map(analyze, operands(exp))
+    (env) ->
+      executeApplication(
+        getOperatorProc(env), # operator proc
+        map(((operandProc) -> operandProc(env)), operandProcs) # args
+      )
+
+  executeApplication: (proc, args) ->
+    if isPrimitiveProcedure proc
+      return applyPrimitiveProcedure(proc, args)
+
+    if isCompoundProcedure proc
+      code = procedureBody(proc)
+      return code(extendEnvironment(procedureParameters(proc), args, procedureEnvironment(proc)))
+
+    throw "Unknown procedure type -- EXECUTE-APPLICATION #{proc}"
+
+  # Our new evaluator uses the same data structures, syntax procedures, and run-time support
+  # procedures as in sections 4.1.2,  4.1.3, and 4.1.4.
+
+  analyzeLet: (lambda, exp) ->
+    (env) ->
+      executeApplication(
+        lambda(env),
+        letVals = letValues(exp, env)
+      )
+
 # Now all we need to do to run the evaluator is to initialize the global environment and start the driver loop.
 # Here is a sample interaction:
 
-this.TheGlobalEnvironment = setupEnvironment()
+@TheGlobalEnvironment = setupEnvironment()
 
 # debug aliases
-this.global = TheGlobalEnvironment
-this.empty = TheEmptyEnvironment
-this.G = TheGlobalEnvironment
-this.E = TheEmptyEnvironment
-
+@global = TheGlobalEnvironment
+@empty = TheEmptyEnvironment
+@G = TheGlobalEnvironment
+@E = TheEmptyEnvironment
